@@ -8,3 +8,4 @@ broken-*.csv
 broken-*.txt
 dist/
 build/
+broken.*

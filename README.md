@@ -2,19 +2,64 @@
 
 A polite CLI crawler that scans a website and reports every URL that returns a broken status (4xx, 5xx, soft-404, timeout, DNS error). For each broken link it records *which page* references it, so you know where to fix.
 
-## Install
+## Requirements
+
+- Python 3.11 or newer
+
+## Quick start
+
+From the project root (`/path/to/404hunter`):
 
 ```bash
+# 1. Install the package
 pip install -e .
+
+# 2. Run a scan
+hunter https://example.com -o broken.csv -v
 ```
 
-## Usage
+The first time it runs, it will:
+
+1. fetch the seed URL,
+2. discover and crawl every same-host link reachable from it (server-rendered HTML only),
+3. HEAD-check external links to spot dead outbound references,
+4. write `broken.csv` and a human-readable `broken.txt` next to it.
+
+If you skip `-o`, the report is named `broken-YYYYMMDD-HHMM.csv` in the current directory.
+
+## Examples
 
 ```bash
-hunter scan https://example.com -o broken.csv
+# Fast scan with verbose progress logging
+hunter https://example.com -o report.csv -v
+
+# Be gentler on a small server (1 request at a time, 1s gap)
+hunter https://example.com -c 1 -d 1.0
+
+# Only crawl /blog/, skip /admin/
+hunter https://example.com --include '/blog/*' --exclude '/admin/*'
+
+# Scan a staging site behind basic auth, ignore TLS issues
+hunter https://staging.example.com --auth user:pass --insecure
+
+# Pass a session cookie
+hunter https://example.com --header "Cookie: session=abc123"
+
+# Include subdomains (api.example.com, www.example.com, ...)
+hunter https://example.com --scope domain
+
+# Resume a crawl that crashed or was interrupted
+hunter https://example.com --resume
 ```
 
-Common options:
+## Running the test suite
+
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+## Common options
 
 | Flag | Default | What |
 |---|---|---|
@@ -33,6 +78,25 @@ Common options:
 | `--insecure` | off | Skip TLS verification. |
 | `--resume` | off | Continue from prior `.hunter-state.db`. |
 | `-v, --verbose` | off | Log each URL as checked. |
+
+See `hunter --help` for the full list.
+
+## Output format
+
+`broken.csv` columns:
+
+```
+status, url, final_url, source_page, link_text, redirect_chain, error
+```
+
+`status` is one of: a numeric HTTP code (`404`, `500`, ...), `soft-404`, `timeout`, `ssl-error`, `dns-error`, `connect-error`, `error`.
+
+`broken.txt` is a quick-scan version with one line per broken URL:
+
+```
+      404  https://example.com/missing  (found on: https://example.com/blog/)
+ soft-404  https://example.com/old      (found on: https://example.com/)  [heuristic-match]
+```
 
 ## Safety
 
