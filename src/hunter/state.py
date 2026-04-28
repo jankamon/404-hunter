@@ -15,7 +15,8 @@ class Finding:
     url: str
     final_url: str = ""
     source_page: str = ""
-    link_text: str = ""
+    anchor_text: str = ""
+    raw_href: str = ""
     redirect_chain: list[str] = field(default_factory=list)
     error: str = ""
 
@@ -32,14 +33,16 @@ CREATE TABLE IF NOT EXISTS findings (
     url TEXT NOT NULL,
     final_url TEXT,
     source_page TEXT,
-    link_text TEXT,
+    anchor_text TEXT,
+    raw_href TEXT,
     redirect_chain TEXT,
     error TEXT
 );
 CREATE TABLE IF NOT EXISTS frontier (
     url TEXT PRIMARY KEY,
     source_page TEXT,
-    link_text TEXT
+    anchor_text TEXT,
+    raw_href TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_findings_url ON findings(url);
 """
@@ -76,19 +79,19 @@ class Store:
                 (url, status_code),
             )
 
-    def push_frontier(self, url: str, source_page: str, link_text: str) -> bool:
+    def push_frontier(self, url: str, source_page: str, anchor_text: str, raw_href: str) -> bool:
         """Insert into frontier; return True if new."""
         with self.cursor() as cur:
             cur.execute(
-                "INSERT OR IGNORE INTO frontier (url, source_page, link_text) VALUES (?, ?, ?)",
-                (url, source_page, link_text),
+                "INSERT OR IGNORE INTO frontier (url, source_page, anchor_text, raw_href) VALUES (?, ?, ?, ?)",
+                (url, source_page, anchor_text, raw_href),
             )
             return cur.rowcount > 0
 
-    def pop_frontier_batch(self, n: int) -> list[tuple[str, str, str]]:
+    def pop_frontier_batch(self, n: int) -> list[tuple[str, str, str, str]]:
         """Pop up to n entries from the frontier."""
         with self.cursor() as cur:
-            cur.execute("SELECT url, source_page, link_text FROM frontier LIMIT ?", (n,))
+            cur.execute("SELECT url, source_page, anchor_text, raw_href FROM frontier LIMIT ?", (n,))
             rows = cur.fetchall()
             if rows:
                 cur.executemany("DELETE FROM frontier WHERE url = ?", [(r[0],) for r in rows])
@@ -102,14 +105,15 @@ class Store:
     def add_finding(self, f: Finding) -> None:
         with self.cursor() as cur:
             cur.execute(
-                "INSERT INTO findings (status, url, final_url, source_page, link_text, redirect_chain, error)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO findings (status, url, final_url, source_page, anchor_text, raw_href, redirect_chain, error)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     f.status,
                     f.url,
                     f.final_url,
                     f.source_page,
-                    f.link_text,
+                    f.anchor_text,
+                    f.raw_href,
                     json.dumps(f.redirect_chain) if f.redirect_chain else "",
                     f.error,
                 ),
@@ -118,20 +122,21 @@ class Store:
     def all_findings(self) -> list[Finding]:
         with self.cursor() as cur:
             cur.execute(
-                "SELECT status, url, final_url, source_page, link_text, redirect_chain, error FROM findings ORDER BY id"
+                "SELECT status, url, final_url, source_page, anchor_text, raw_href, redirect_chain, error FROM findings ORDER BY id"
             )
             out: list[Finding] = []
             for row in cur.fetchall():
-                chain = json.loads(row[5]) if row[5] else []
+                chain = json.loads(row[6]) if row[6] else []
                 out.append(
                     Finding(
                         status=row[0],
                         url=row[1],
                         final_url=row[2] or "",
                         source_page=row[3] or "",
-                        link_text=row[4] or "",
+                        anchor_text=row[4] or "",
+                        raw_href=row[5] or "",
                         redirect_chain=chain,
-                        error=row[6] or "",
+                        error=row[7] or "",
                     )
                 )
             return out

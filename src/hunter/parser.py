@@ -11,7 +11,8 @@ from .normalize import normalize
 @dataclass(frozen=True)
 class Link:
     url: str  # normalized absolute URL
-    text: str  # link text, trimmed and truncated
+    anchor_text: str  # link text, trimmed and truncated
+    raw_href: str  # original href attribute as it appeared in the HTML
 
 
 def extract_links(html: str, base_url: str, *, max_body_bytes: int = 5_000_000) -> list[Link]:
@@ -52,6 +53,6 @@ def extract_links(html: str, base_url: str, *, max_body_bytes: int = 5_000_000) 
             title = node.attributes.get("title")
             if title:
                 text = title[:200]
-        out.append(Link(url=url, text=text))
+        out.append(Link(url=url, anchor_text=text, raw_href=href.strip()[:500]))
 
     return out

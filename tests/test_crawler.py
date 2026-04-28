@@ -88,7 +88,8 @@ async def test_plain_404(httpx_mock, tmp_path):
     assert f.status == "404"
     assert f.url == "https://example.com/missing"
     assert f.source_page == "https://example.com/"
-    assert f.link_text == "go"
+    assert f.anchor_text == "go"
+    assert f.raw_href == "/missing"
 
 
 @pytest.mark.asyncio

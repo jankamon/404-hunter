@@ -12,7 +12,8 @@ CSV_COLUMNS = [
     "url",
     "final_url",
     "source_page",
-    "link_text",
+    "anchor_text",
+    "raw_href",
     "redirect_chain",
     "error",
 ]
@@ -30,7 +31,8 @@ def write_csv(findings: list[Finding], path: Path) -> None:
                     f.url,
                     f.final_url,
                     f.source_page,
-                    f.link_text,
+                    f.anchor_text,
+                    f.raw_href,
                     " -> ".join(f.redirect_chain),
                     f.error,
                 ]
@@ -46,6 +48,8 @@ def write_txt(findings: list[Finding], path: Path) -> None:
         for f in findings:
             source = f.source_page or "<seed>"
             line = f"{f.status:>9}  {f.url}  (found on: {source})"
+            if f.raw_href and f.raw_href != f.url:
+                line += f"  [href={f.raw_href}]"
             if f.error:
                 line += f"  [{f.error}]"
             fh.write(line + "\n")

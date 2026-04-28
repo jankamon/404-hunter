@@ -18,7 +18,7 @@ class TestExtractLinks:
         links = extract_links(html, "https://example.com/")
         assert len(links) == 1
         # First text wins (deterministic order: parser visits in document order)
-        assert links[0].text == "A"
+        assert links[0].anchor_text == "A"
 
     def test_skips_unsupported_schemes(self):
         html = '<a href="mailto:x@y.com">M</a><a href="javascript:foo()">J</a><a href="/ok">OK</a>'
@@ -26,21 +26,27 @@ class TestExtractLinks:
         urls = [l.url for l in links]
         assert urls == ["https://example.com/ok"]
 
-    def test_extracts_link_text(self):
+    def test_extracts_anchor_text(self):
         html = '<a href="/x">Read <b>more</b></a>'
         links = extract_links(html, "https://example.com/")
-        assert links[0].text == "Read more"
+        assert links[0].anchor_text == "Read more"
 
     def test_uses_title_when_text_missing(self):
         html = '<a href="/x" title="Image link"><img src="/i.png"/></a>'
         links = extract_links(html, "https://example.com/")
-        assert links[0].text == "Image link"
+        assert links[0].anchor_text == "Image link"
 
     def test_handles_empty_html(self):
         assert extract_links("", "https://example.com/") == []
 
-    def test_truncates_huge_link_text(self):
+    def test_truncates_huge_anchor_text(self):
         long_text = "x" * 1000
         html = f'<a href="/x">{long_text}</a>'
         links = extract_links(html, "https://example.com/")
-        assert len(links[0].text) <= 200
+        assert len(links[0].anchor_text) <= 200
+
+    def test_preserves_raw_href(self):
+        html = '<a href="/category/car-seats/i-size">See more</a>'
+        links = extract_links(html, "https://venicci.pl/")
+        assert links[0].url == "https://venicci.pl/category/car-seats/i-size"
+        assert links[0].raw_href == "/category/car-seats/i-size"

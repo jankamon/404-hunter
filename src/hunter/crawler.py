@@ -61,7 +61,7 @@ class Crawler:
 
     async def run(self, *, resume: bool) -> None:
         if not resume:
-            self.store.push_frontier(self.cfg.seed_url, source_page="", link_text="")
+            self.store.push_frontier(self.cfg.seed_url, source_page="", anchor_text="", raw_href="")
 
         if self.cfg.soft_404:
             try:
@@ -69,7 +69,7 @@ class Crawler:
             except Exception as exc:
                 log.warning("soft-404 calibration failed: %s", exc)
 
-        queue: asyncio.Queue[tuple[str, str, str]] = asyncio.Queue()
+        queue: asyncio.Queue[tuple[str, str, str, str]] = asyncio.Queue()
 
         async def feeder() -> None:
             while not self._stop.is_set():
@@ -112,7 +112,7 @@ class Crawler:
             except (asyncio.CancelledError, Exception):
                 pass
 
-    async def _process(self, url: str, source_page: str, link_text: str) -> None:
+    async def _process(self, url: str, source_page: str, anchor_text: str, raw_href: str) -> None:
         if self.cfg.max_pages and self._pages_fetched >= self.cfg.max_pages:
             self._stop.set()
             return
@@ -129,7 +129,7 @@ class Crawler:
             result = await self.fetcher.head(url)
             self._pages_fetched += 1
             self.store.mark_seen(url, result.status_code)
-            self._maybe_record(url, source_page, link_text, result, parse=False, same_site=False)
+            self._maybe_record(url, source_page, anchor_text, raw_href, result, parse=False, same_site=False)
             if self.cfg.verbose:
                 _log_progress(result, url, source_page)
             return
@@ -143,7 +143,7 @@ class Crawler:
             result = await self.fetcher.head(url)
             self._pages_fetched += 1
             self.store.mark_seen(url, result.status_code)
-            self._maybe_record(url, source_page, link_text, result, parse=False, same_site=True)
+            self._maybe_record(url, source_page, anchor_text, raw_href, result, parse=False, same_site=True)
             if self.cfg.verbose:
                 _log_progress(result, url, source_page)
             return
@@ -153,7 +153,7 @@ class Crawler:
             result = await self.fetcher.head(url)
             self._pages_fetched += 1
             self.store.mark_seen(url, result.status_code)
-            self._maybe_record(url, source_page, link_text, result, parse=False, same_site=True)
+            self._maybe_record(url, source_page, anchor_text, raw_href, result, parse=False, same_site=True)
             if self.cfg.verbose:
                 _log_progress(result, url, source_page)
             return
@@ -161,7 +161,7 @@ class Crawler:
         result = await self.fetcher.get(url)
         self._pages_fetched += 1
         self.store.mark_seen(url, result.status_code)
-        self._maybe_record(url, source_page, link_text, result, parse=True, same_site=True)
+        self._maybe_record(url, source_page, anchor_text, raw_href, result, parse=True, same_site=True)
         if self.cfg.verbose:
             _log_progress(result, url, source_page)
 
@@ -177,13 +177,14 @@ class Crawler:
                 if normalized in self._enqueued:
                     continue
                 self._enqueued.add(normalized)
-                self.store.push_frontier(normalized, url, link.text)
+                self.store.push_frontier(normalized, url, link.anchor_text, link.raw_href)
 
     def _maybe_record(
         self,
         url: str,
         source_page: str,
-        link_text: str,
+        anchor_text: str,
+        raw_href: str,
         result,
         *,
         parse: bool,
@@ -212,7 +213,8 @@ class Crawler:
                 url=url,
                 final_url=result.final_url or "",
                 source_page=source_page,
-                link_text=link_text,
+                anchor_text=anchor_text,
+                raw_href=raw_href,
                 redirect_chain=result.redirect_chain,
                 error=error,
             )
