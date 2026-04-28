@@ -9,3 +9,4 @@ broken-*.txt
 dist/
 build/
 broken.*
+.hunter-state.*
