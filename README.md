@@ -1,4 +1,4 @@
-# 404hunter
+# 404-hunter
 
 A polite CLI crawler that scans a website and reports every URL that returns a broken status (4xx, 5xx, soft-404, timeout, DNS error). For each broken link it records *which page* references it, so you know where to fix.
 
@@ -74,7 +74,7 @@ pytest
 | `--include` / `--exclude` | — | Glob path filters; repeatable. |
 | `--auth USER:PASS` | — | HTTP basic auth. |
 | `--header` | — | Extra header (`"Cookie: ..."`); repeatable. |
-| `--user-agent` | `404hunter/0.1` | UA override. |
+| `--user-agent` | `404-hunter/0.1` | UA override. |
 | `--insecure` | off | Skip TLS verification. |
 | `--resume` | off | Continue from prior `.hunter-state.db`. |
 | `-v, --verbose` | off | Log each URL as checked. |

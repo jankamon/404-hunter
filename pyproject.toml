@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "404hunter"
+name = "404-hunter"
 version = "0.1.0"
 description = "Polite website crawler that finds broken links and saves a report."
 requires-python = ">=3.11"

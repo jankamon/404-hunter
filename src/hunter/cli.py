@@ -55,7 +55,7 @@ def scan(
     auth: Optional[str] = typer.Option(None, "--auth", help="USER:PASS for HTTP basic auth."),
     header: list[str] = typer.Option([], "--header", help="Extra header; repeatable."),
     user_agent: str = typer.Option(
-        "404hunter/0.1 (+https://github.com/; broken-link audit)",
+        "404-hunter/0.1 (+https://github.com/; broken-link audit)",
         "--user-agent",
     ),
     insecure: bool = typer.Option(False, "--insecure", help="Skip TLS verification."),
