@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+.pytest_cache/
+.hunter-state.db
+broken-*.csv
+broken-*.txt
+dist/
+build/
