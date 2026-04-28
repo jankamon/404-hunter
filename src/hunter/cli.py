@@ -47,6 +47,9 @@ def scan(
     delay: float = typer.Option(0.5, "-d", "--delay", min=0.0, help="Per-host minimum gap (s)."),
     timeout: float = typer.Option(15.0, "-t", "--timeout", min=1.0, help="Read timeout (s)."),
     max_pages: int = typer.Option(10_000, "--max-pages", min=0, help="Hard cap; 0 = unlimited."),
+    max_body_mb: int = typer.Option(
+        5, "--max-body-mb", min=1, help="Max HTML body downloaded per page, in MB."
+    ),
     check_external: bool = typer.Option(True, "--check-external/--no-check-external"),
     soft_404: bool = typer.Option(True, "--soft-404/--no-soft-404"),
     scope: str = typer.Option("host", "--scope", help="host | domain"),
@@ -94,6 +97,7 @@ def scan(
             delay=delay,
             timeout=timeout,
             max_pages=max_pages,
+            max_body_bytes=max_body_mb * 1_000_000,
             check_external=check_external,
             soft_404=soft_404,
             scope=scope,
@@ -118,6 +122,7 @@ async def _run(
     delay: float,
     timeout: float,
     max_pages: int,
+    max_body_bytes: int,
     check_external: bool,
     soft_404: bool,
     scope: str,
@@ -142,7 +147,7 @@ async def _run(
         concurrency=concurrency,
     )
     try:
-        fetcher = Fetcher(client=client, rate_limiter=rate_limiter)
+        fetcher = Fetcher(client=client, rate_limiter=rate_limiter, max_body_bytes=max_body_bytes)
         crawler = Crawler(
             config=CrawlConfig(
                 seed_url=seed,

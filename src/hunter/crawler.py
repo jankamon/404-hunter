@@ -20,6 +20,11 @@ from .state import Finding, Store
 
 log = logging.getLogger("hunter")
 
+# External links that come back with these codes are commonly WAF/anti-bot rejections
+# (Cloudflare, Akamai) rather than real 404s — surface them under a separate label
+# so users can eyeball them instead of chasing false positives.
+_AMBIGUOUS_EXTERNAL_STATUSES = frozenset({401, 403, 429})
+
 
 @dataclass
 class CrawlConfig:
@@ -124,7 +129,7 @@ class Crawler:
             result = await self.fetcher.head(url)
             self._pages_fetched += 1
             self.store.mark_seen(url, result.status_code)
-            self._maybe_record(url, source_page, link_text, result, parse=False)
+            self._maybe_record(url, source_page, link_text, result, parse=False, same_site=False)
             if self.cfg.verbose:
                 _log_progress(result, url, source_page)
             return
@@ -138,7 +143,7 @@ class Crawler:
             result = await self.fetcher.head(url)
             self._pages_fetched += 1
             self.store.mark_seen(url, result.status_code)
-            self._maybe_record(url, source_page, link_text, result, parse=False)
+            self._maybe_record(url, source_page, link_text, result, parse=False, same_site=True)
             if self.cfg.verbose:
                 _log_progress(result, url, source_page)
             return
@@ -148,7 +153,7 @@ class Crawler:
             result = await self.fetcher.head(url)
             self._pages_fetched += 1
             self.store.mark_seen(url, result.status_code)
-            self._maybe_record(url, source_page, link_text, result, parse=False)
+            self._maybe_record(url, source_page, link_text, result, parse=False, same_site=True)
             if self.cfg.verbose:
                 _log_progress(result, url, source_page)
             return
@@ -156,7 +161,7 @@ class Crawler:
         result = await self.fetcher.get(url)
         self._pages_fetched += 1
         self.store.mark_seen(url, result.status_code)
-        self._maybe_record(url, source_page, link_text, result, parse=True)
+        self._maybe_record(url, source_page, link_text, result, parse=True, same_site=True)
         if self.cfg.verbose:
             _log_progress(result, url, source_page)
 
@@ -182,6 +187,7 @@ class Crawler:
         result,
         *,
         parse: bool,
+        same_site: bool,
     ) -> None:
         is_soft = False
         soft_reason = ""
@@ -196,6 +202,9 @@ class Crawler:
             error = soft_reason
         else:
             status_label, error = classify(result)
+            if not same_site and result.status_code in _AMBIGUOUS_EXTERNAL_STATUSES:
+                error = f"http-{result.status_code}-likely-anti-bot"
+                status_label = "blocked"
 
         self.store.add_finding(
             Finding(

@@ -15,7 +15,7 @@ From the project root (`/path/to/404hunter`):
 pip install -e .
 
 # 2. Run a scan
-hunter https://example.com -o broken.csv -v
+hunter https://example.com -o broken.csv -v --max-body-mb 10
 ```
 
 The first time it runs, it will:
@@ -50,6 +50,9 @@ hunter https://example.com --scope domain
 
 # Resume a crawl that crashed or was interrupted
 hunter https://example.com --resume
+
+# Allow larger HTML bodies (default 5 MB) for sites with heavy pages
+hunter https://example.com --max-body-mb 100
 ```
 
 ## Running the test suite
@@ -68,6 +71,7 @@ pytest
 | `-d, --delay` | `0.5` | Minimum seconds between requests to the same host. |
 | `-t, --timeout` | `15` | Read timeout in seconds. |
 | `--max-pages` | `10000` | Hard cap on pages crawled. `0` = unlimited (warns). |
+| `--max-body-mb` | `5` | Max HTML body downloaded per page, in MB. Bump for sites with large pages. |
 | `--check-external / --no-check-external` | on | HEAD external links to detect dead outbound references. |
 | `--soft-404 / --no-soft-404` | on | Detect pages that return 200 but show "not found". |
 | `--scope` | `host` | What counts as same site: `host` or `domain`. |
@@ -89,7 +93,9 @@ See `hunter --help` for the full list.
 status, url, final_url, source_page, link_text, redirect_chain, error
 ```
 
-`status` is one of: a numeric HTTP code (`404`, `500`, ...), `soft-404`, `timeout`, `ssl-error`, `dns-error`, `connect-error`, `error`.
+`status` is one of: a numeric HTTP code (`404`, `500`, ...), `soft-404`, `blocked`, `timeout`, `ssl-error`, `dns-error`, `connect-error`, `error`.
+
+`blocked` is reported when an external link returns `401`, `403`, or `429` — usually a WAF or anti-bot rule (Cloudflare, Akamai), not a real broken link. They are bucketed separately so you can eyeball them rather than treat them as 404s.
 
 `broken.txt` is a quick-scan version with one line per broken URL:
 

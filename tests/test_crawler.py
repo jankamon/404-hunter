@@ -247,6 +247,75 @@ async def test_external_head_check(httpx_mock, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_external_403_is_blocked_not_403(httpx_mock, tmp_path):
+    """External 403 (likely WAF) gets bucketed as 'blocked', not as a hard failure."""
+    import re
+
+    httpx_mock.add_response(
+        url=re.compile(r"https://example\.com/__hunter_probe_[0-9a-f]+__"),
+        status_code=404,
+        is_reusable=True,
+    )
+    httpx_mock.add_response(
+        url="https://example.com/",
+        **page('<a href="https://outside.test/protected">x</a>'),
+    )
+    httpx_mock.add_response(
+        url="https://outside.test/protected",
+        method="HEAD",
+        status_code=403,
+    )
+
+    crawler, store, client = await _make_crawler(tmp_path)
+    try:
+        await crawler.run(resume=False)
+    finally:
+        await client.aclose()
+        store.close()
+
+    store2 = Store(tmp_path / "state.db")
+    findings = store2.all_findings()
+    store2.close()
+
+    assert len(findings) == 1
+    assert findings[0].url == "https://outside.test/protected"
+    assert findings[0].status == "blocked"
+    assert "403" in findings[0].error
+
+
+@pytest.mark.asyncio
+async def test_internal_403_stays_403(httpx_mock, tmp_path):
+    """Internal 403 is a real signal (perm/config issue), not anti-bot — keep numeric label."""
+    import re
+
+    httpx_mock.add_response(
+        url=re.compile(r"https://example\.com/__hunter_probe_[0-9a-f]+__"),
+        status_code=404,
+        is_reusable=True,
+    )
+    httpx_mock.add_response(
+        url="https://example.com/",
+        **page('<a href="/forbidden">x</a>'),
+    )
+    httpx_mock.add_response(url="https://example.com/forbidden", status_code=403)
+
+    crawler, store, client = await _make_crawler(tmp_path)
+    try:
+        await crawler.run(resume=False)
+    finally:
+        await client.aclose()
+        store.close()
+
+    store2 = Store(tmp_path / "state.db")
+    findings = store2.all_findings()
+    store2.close()
+
+    assert len(findings) == 1
+    assert findings[0].url == "https://example.com/forbidden"
+    assert findings[0].status == "403"
+
+
+@pytest.mark.asyncio
 async def test_max_pages_halts(httpx_mock, tmp_path):
     import re
 
