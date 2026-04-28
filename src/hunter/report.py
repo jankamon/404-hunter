@@ -8,12 +8,12 @@ from .state import Finding
 
 
 CSV_COLUMNS = [
-    "status",
-    "url",
-    "final_url",
     "source_page",
+    "url",
     "anchor_text",
     "raw_href",
+    "status",
+    "final_url",
     "redirect_chain",
     "error",
 ]
@@ -27,12 +27,12 @@ def write_csv(findings: list[Finding], path: Path) -> None:
         for f in findings:
             writer.writerow(
                 [
-                    f.status,
-                    f.url,
-                    f.final_url,
                     f.source_page,
+                    f.url,
                     f.anchor_text,
                     f.raw_href,
+                    f.status,
+                    f.final_url,
                     " -> ".join(f.redirect_chain),
                     f.error,
                 ]
